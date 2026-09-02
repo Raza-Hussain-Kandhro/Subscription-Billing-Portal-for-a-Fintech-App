@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeX Fintech - Subscription Billing Database Architecture Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1d;
+            --bg-secondary: #111827;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --accent-blue: #38bdf8;
+            --accent-indigo: #6366f1;
+            --accent-emerald: #10b981;
+            --accent-rose: #f43f5e;
+            --accent-amber: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Top Navigation Bar */
+        header {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 0.85rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--accent-indigo), var(--accent-blue));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .brand-text h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .brand-text span {
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .student-badge {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.82rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .student-badge strong {
+            color: #a5b4fc;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-emerald);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-emerald);
+        }
+
+        /* KPI Banner */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1.5rem 2rem 0.5rem 2rem;
+        }
+
+        .kpi-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .kpi-sub {
+            font-size: 0.75rem;
+            color: var(--accent-emerald);
+            font-weight: 600;
+        }
+
+        /* Main Tabs Layout */
+        .container {
+            padding: 1.5rem 2rem;
+            flex: 1;
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.75rem 1.25rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-blue);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo));
+            box-shadow: 0 0 8px var(--accent-blue);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Table Browser */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+
+        .table-selector-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 1.25rem;
+        }
+
+        .tbl-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tbl-pill:hover, .tbl-pill.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .data-table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            text-align: left;
+        }
+
+        thead {
+            background: #0f172a;
+        }
+
+        th {
+            padding: 12px 16px;
+            font-weight: 600;
+            color: #94a3b8;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: #e2e8f0;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-success { background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-warning { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge-danger { background: rgba(244, 63, 94, 0.18); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+        .badge-info { background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+
+        /* Query Runner */
+        .query-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 1.5rem;
+        }
+
+        .query-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .query-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .query-item:hover, .query-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--accent-indigo);
+        }
+
+        .query-item h4 {
+            font-size: 0.88rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .query-item p {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        .query-terminal {
+            background: #090d16;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 0.75rem;
+        }
+
+        .sql-box {
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.82rem;
+            color: #38bdf8;
+            overflow-x: auto;
+            max-height: 220px;
+            white-space: pre-wrap;
+        }
+
+        .btn-run {
+            background: linear-gradient(135deg, var(--accent-indigo), var(--accent-blue));
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+            transition: all 0.2s;
+        }
+
+        .btn-run:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        /* ER Diagram & Architecture Grid */
+        .erd-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .erd-card {
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .erd-header {
+            background: #1e293b;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .erd-cols {
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .erd-col {
+            display: flex;
+            justify-content: space-between;
+            color: #cbd5e1;
+        }
+
+        .erd-col .pk { color: var(--accent-amber); font-weight: bold; }
+        .erd-col .fk { color: var(--accent-blue); }
+        .erd-col .type { color: #64748b; font-size: 0.75rem; }
+
+        /* Video Guide Script Styling */
+        .script-box {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .timestamp-step {
+            border-left: 3px solid var(--accent-indigo);
+            padding-left: 1rem;
+        }
+
+        .timestamp-step h4 {
+            color: var(--accent-blue);
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .timestamp-step p {
+            font-size: 0.88rem;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+        }
+
+        .timestamp-step .urdu-quote {
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            color: #c7d2fe;
+            border-left: 2px solid var(--accent-indigo);
+        }
+
+        @media (max-width: 900px) {
+            .query-layout {
+                grid-template-columns: 1fr;
+            }
+            .kpi-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">SX</div>
+            <div class="brand-text">
+                <h1>SafeX Billing Portal — PostgreSQL DB Architecture</h1>
+                <span>Enterprise Relational Data Model & Financial Ledger</span>
+            </div>
+        </div>
+        <div class="student-badge">
+            <div class="status-dot"></div>
+            <span>Student: <strong>Ahmed Iqbal</strong> | Member 6 (Database & Backend DB Assistant)</span>
+        </div>
+    </header>
+
+    <!-- Top KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Active MRR (Monthly Recurring)</div>
+            <div class="kpi-value">$1,320.00</div>
+            <div class="kpi-sub">▲ Normalized from active plans</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Total Invoiced (All-Time)</div>
+            <div class="kpi-value">$5,487.59</div>
+            <div class="kpi-sub">✓ Settled in ledger</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Active Customers</div>
+            <div class="kpi-value">8 Organizations</div>
+            <div class="kpi-sub">Multi-tenant Accounts</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Database Schema Status</div>
+            <div class="kpi-value">ACID Compliant</div>
+            <div class="kpi-sub">9 Tables • 5 Views • Triggers</div>
+        </div>
+    </div>
+
+    <!-- Main Content Tabs -->
+    <main class="container">
+        <div class="tabs-header">
+            <button class="tab-btn active" onclick="switchTab('tab-tables')">📊 Live Table Browser</button>
+            <button class="tab-btn" onclick="switchTab('tab-queries')">⚡ Interactive Query Playground</button>
+            <button class="tab-btn" onclick="switchTab('tab-erd')">📐 Schema & ERD Architecture</button>
+            <button class="tab-btn" onclick="switchTab('tab-video')">🎙️ Video Recording Script (5-10 Min)</button>
+        </div>
+
+        <!-- TAB 1: Live Table Browser -->
+        <div id="tab-tables" class="tab-content active">
+            <div class="card">
+                <div class="table-selector-bar">
+                    <button class="tbl-pill active" onclick="loadTable('organizations', this)">organizations (8)</button>
+                    <button class="tbl-pill" onclick="loadTable('pricing_plans', this)">pricing_plans (4)</button>
+                    <button class="tbl-pill" onclick="loadTable('subscriptions', this)">subscriptions (6)</button>
+                    <button class="tbl-pill" onclick="loadTable('invoices', this)">invoices (4)</button>
+                    <button class="tbl-pill" onclick="loadTable('transactions', this)">transactions (4)</button>
+                    <button class="tbl-pill" onclick="loadTable('payment_methods', this)">payment_methods (6)</button>
+                    <button class="tbl-pill" onclick="loadTable('usage_records', this)">usage_records (4)</button>
+                    <button class="tbl-pill" onclick="loadTable('audit_logs', this)">audit_logs (4)</button>
+                </div>
+
+                <div class="data-table-wrapper" id="tableContainer">
+                    <!-- Populated dynamically via app.js -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Query Playground -->
+        <div id="tab-queries" class="tab-content">
+            <div class="query-layout">
+                <div class="query-list">
+                    <div class="query-item active" onclick="selectQuery(1, this)">
+                        <h4>1. MRR & ARR Run Rate</h4>
+                        <p>Calculate normalized monthly recurring revenue by subscription tier.</p>
+                    </div>
+                    <div class="query-item" onclick="selectQuery(2, this)">
+                        <h4>2. Customer 360 Portal View</h4>
+                        <p>Aggregated customer billing summary, active plan & pending balance.</p>
+                    </div>
+                    <div class="query-item" onclick="selectQuery(3, this)">
+                        <h4>3. Overdue Invoices & Dunning</h4>
+                        <p>Identify failed charges and past-due accounts for recovery.</p>
+                    </div>
+                    <div class="query-item" onclick="selectQuery(4, this)">
+                        <h4>4. Metered API Usage Billing</h4>
+                        <p>Calculate consumption overage fees beyond base plan limits.</p>
+                    </div>
+                    <div class="query-item" onclick="selectQuery(5, this)">
+                        <h4>5. Itemized Invoice Breakdown</h4>
+                        <p>Fetch complete invoice with tax, discounts and line items.</p>
+                    </div>
+                    <div class="query-item" onclick="selectQuery(6, this)">
+                        <h4>6. Payment Reconciliation</h4>
+                        <p>Verify gateway transaction settlement logs against invoices.</p>
+                    </div>
+                    <div class="query-item" onclick="selectQuery(7, this)">
+                        <h4>7. Churn & Retention Analytics</h4>
+                        <p>Active vs canceled subscription percentage breakdown.</p>
+                    </div>
+                </div>
+
+                <div class="query-terminal">
+                    <div class="terminal-header">
+                        <span style="font-weight: 600; font-size: 0.9rem; color: #a5b4fc;">SQL Query Terminal</span>
+                        <button class="btn-run" onclick="executeCurrentQuery()">▶ Execute Query</button>
+                    </div>
+                    <pre class="sql-box" id="sqlDisplay"></pre>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Query Execution Output:</div>
+                    <div class="data-table-wrapper" id="queryResultContainer">
+                        <!-- Result table -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: ERD & Schema -->
+        <div id="tab-erd" class="tab-content">
+            <div class="card">
+                <h3 style="margin-bottom: 1rem; color: var(--accent-blue);">PostgreSQL Relational Schema Architecture</h3>
+                <div class="erd-grid">
+                    <div class="erd-card">
+                        <div class="erd-header">
+                            <span>organizations</span>
+                            <span class="badge badge-info">Table</span>
+                        </div>
+                        <div class="erd-cols">
+                            <div class="erd-col"><span class="pk">id (PK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>name</span> <span class="type">VARCHAR(150)</span></div>
+                            <div class="erd-col"><span>billing_email</span> <span class="type">VARCHAR(255) [UQ]</span></div>
+                            <div class="erd-col"><span>currency</span> <span class="type">VARCHAR(3)</span></div>
+                            <div class="erd-col"><span>is_active</span> <span class="type">BOOLEAN</span></div>
+                        </div>
+                    </div>
+
+                    <div class="erd-card">
+                        <div class="erd-header">
+                            <span>pricing_plans</span>
+                            <span class="badge badge-info">Table</span>
+                        </div>
+                        <div class="erd-cols">
+                            <div class="erd-col"><span class="pk">id (PK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>plan_code</span> <span class="type">VARCHAR(50) [UQ]</span></div>
+                            <div class="erd-col"><span>billing_interval</span> <span class="type">ENUM</span></div>
+                            <div class="erd-col"><span>base_price</span> <span class="type">NUMERIC(12,2)</span></div>
+                            <div class="erd-col"><span>max_team_seats</span> <span class="type">INT</span></div>
+                        </div>
+                    </div>
+
+                    <div class="erd-card">
+                        <div class="erd-header">
+                            <span>subscriptions</span>
+                            <span class="badge badge-info">Table</span>
+                        </div>
+                        <div class="erd-cols">
+                            <div class="erd-col"><span class="pk">id (PK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span class="fk">organization_id (FK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span class="fk">plan_id (FK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>status</span> <span class="type">ENUM</span></div>
+                            <div class="erd-col"><span>current_period_end</span> <span class="type">TIMESTAMPTZ</span></div>
+                        </div>
+                    </div>
+
+                    <div class="erd-card">
+                        <div class="erd-header">
+                            <span>invoices</span>
+                            <span class="badge badge-info">Table</span>
+                        </div>
+                        <div class="erd-cols">
+                            <div class="erd-col"><span class="pk">id (PK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>invoice_number</span> <span class="type">VARCHAR(50) [UQ]</span></div>
+                            <div class="erd-col"><span class="fk">organization_id (FK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>status</span> <span class="type">ENUM</span></div>
+                            <div class="erd-col"><span>total_amount</span> <span class="type">NUMERIC(12,2)</span></div>
+                            <div class="erd-col"><span>due_date</span> <span class="type">TIMESTAMPTZ</span></div>
+                        </div>
+                    </div>
+
+                    <div class="erd-card">
+                        <div class="erd-header">
+                            <span>transactions</span>
+                            <span class="badge badge-info">Table</span>
+                        </div>
+                        <div class="erd-cols">
+                            <div class="erd-col"><span class="pk">id (PK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>transaction_reference</span> <span class="type">VARCHAR(100) [UQ]</span></div>
+                            <div class="erd-col"><span>idempotency_key</span> <span class="type">VARCHAR(120) [UQ]</span></div>
+                            <div class="erd-col"><span class="fk">invoice_id (FK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>amount</span> <span class="type">NUMERIC(12,2)</span></div>
+                            <div class="erd-col"><span>status</span> <span class="type">ENUM</span></div>
+                        </div>
+                    </div>
+
+                    <div class="erd-card">
+                        <div class="erd-header">
+                            <span>usage_records</span>
+                            <span class="badge badge-info">Table</span>
+                        </div>
+                        <div class="erd-cols">
+                            <div class="erd-col"><span class="pk">id (PK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span class="fk">subscription_id (FK)</span> <span class="type">UUID</span></div>
+                            <div class="erd-col"><span>metric_type</span> <span class="type">ENUM</span></div>
+                            <div class="erd-col"><span>quantity_used</span> <span class="type">BIGINT</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Video Presentation Guide -->
+        <div id="tab-video" class="tab-content">
+            <div class="card">
+                <h3 style="color: var(--accent-blue); margin-bottom: 0.5rem;">Mandatory Screen Recording Video Guide (5 to 10 Minutes)</h3>
+                <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.5rem;">
+                    Follow this step-by-step structure during your video screen recording. Speak clearly in Roman Urdu and English.
+                </p>
+
+                <div class="script-box">
+                    <div class="timestamp-step">
+                        <h4>Step 1: Introduction (0:00 - 1:00)</h4>
+                        <p><strong>Screen:</strong> Show your IDE/Browser with your Project Details.</p>
+                        <div class="urdu-quote">
+                            "Hello everyone, my name is Ahmed Iqbal, 7th Semester Software Engineering student. In our group project 'Subscription Billing Portal for a Fintech App (Team 2)', my assigned role is Member 6 responsible for Database Architecture & Data Modeling using PostgreSQL."
+                        </div>
+                    </div>
+
+                    <div class="timestamp-step">
+                        <h4>Step 2: Why PostgreSQL for Fintech Billing? (1:00 - 2:30)</h4>
+                        <p><strong>Screen:</strong> Open <code>schema.sql</code> and show UUID, ENUMs, and Foreign Keys.</p>
+                        <div class="urdu-quote">
+                            "Fintech billing systems require strict ACID compliance, data integrity, and exact currency precision. Iss wajah se humne FLOAT ke bajaye NUMERIC(12,2) use kiya hai taake rounding errors zero hon. Har record ke liye UUIDs, Custom ENUMs (jaise subscription status: ACTIVE, PAST_DUE, CANCELED), aur Foreign Key constraints lagaye hain taake financial data kabhi corrupt na ho."
+                        </div>
+                    </div>
+
+                    <div class="timestamp-step">
+                        <h4>Step 3: Core Entities & Relational Design (2:30 - 4:30)</h4>
+                        <p><strong>Screen:</strong> Show ERD tab / tables: Organizations -> Subscriptions -> Invoices -> Transactions -> Usage.</p>
+                        <div class="urdu-quote">
+                            "Hamare schema me 8 core tables hain: Organizations customer data store karti hain, Pricing Plans monthly/annual tiers define karte hain. Subscriptions active billing cycle aur seat quantity track karti hain. Invoices itemized billing handle karti hain aur Transactions me humne Idempotency Keys implement ki hain taake double charging na ho."
+                        </div>
+                    </div>
+
+                    <div class="timestamp-step">
+                        <h4>Step 4: Live Query Demonstration (4:30 - 7:00)</h4>
+                        <p><strong>Screen:</strong> Switch to 'Query Playground' tab and click 'Execute Query' on MRR & Overdue Invoices.</p>
+                        <div class="urdu-quote">
+                            "Ab main aapko live analytical queries execute karke dikhata hoon. Pehli query hamara real-time Monthly Recurring Revenue (MRR) calculate karti hai by normalizing monthly and annual plans. Doosri query automated dunning ke liye overdue invoices aur failed transactions filter out karti hai."
+                        </div>
+                    </div>
+
+                    <div class="timestamp-step">
+                        <h4>Step 5: Metered Billing & Audit Logs (7:00 - 8:30)</h4>
+                        <p><strong>Screen:</strong> Show Usage Records table and Audit Logs.</p>
+                        <div class="urdu-quote">
+                            "SafeX portal me humne metered API consumption billing bhi design ki hai jisme base limits ke upar overage charges automatically calculate hote hain. Sath hi PCI DSS aur regulatory compliance ke liye Audit Logs table me har billing event track hota hai."
+                        </div>
+                    </div>
+
+                    <div class="timestamp-step">
+                        <h4>Step 6: Conclusion & GitHub Repository (8:30 - 9:30)</h4>
+                        <p><strong>Screen:</strong> Show GitHub repo README and project folder.</p>
+                        <div class="urdu-quote">
+                            "Ye tha hamara complete PostgreSQL database architecture. Maine saari SQL scripts, seed data, queries aur README GitHub par push kar di hain. Thank you so much!"
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Mock dataset reflecting PostgreSQL seed data
+        const database = {
+            organizations: [
+                { id: 'a0eebc99-9c0b...0a11', name: 'Nexus Digital Pay', email: 'billing@nexuspay.io', currency: 'USD', country: 'US', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a12', name: 'PayScale Global', email: 'accounts@payscaleglobal.com', currency: 'USD', country: 'GB', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a13', name: 'Apex Ledger Labs', email: 'finance@apexledger.co', currency: 'USD', country: 'US', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a14', name: 'Quantum Capital', email: 'billing@quantumcap.ae', currency: 'USD', country: 'AE', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a15', name: 'CloudBank Neo', email: 'accounting@cloudbank.ch', currency: 'USD', country: 'CH', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a16', name: 'ByteFlow Fintech', email: 'invoicing@byteflow.dev', currency: 'USD', country: 'US', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a17', name: 'Veloce Remit', email: 'billing@velocemit.com', currency: 'USD', country: 'SG', status: 'ACTIVE' },
+                { id: 'a0eebc99-9c0b...0a18', name: 'Alpha Hedge Tech', email: 'ops@alphahedge.io', currency: 'USD', country: 'US', status: 'ACTIVE' }
+            ],
+            pricing_plans: [
+                { code: 'STARTER_MO', name: 'Starter Tier (Monthly)', interval: 'MONTHLY', price: '$49.00', seats: 3, api_limit: '25,000 req' },
+                { code: 'GROWTH_MO', name: 'Growth Tier (Monthly)', interval: 'MONTHLY', price: '$149.00', seats: 10, api_limit: '100,000 req' },
+                { code: 'PRO_MO', name: 'Professional Tier (Monthly)', interval: 'MONTHLY', price: '$399.00', seats: 30, api_limit: '500,000 req' },
+                { code: 'ENTERPRISE_YR', name: 'Enterprise Tier (Annual)', interval: 'YEARLY', price: '$4,500.00', seats: 100, api_limit: '5,000,000 req' }
+            ],
+            subscriptions: [
+                { id: 'd0ee...d41', customer: 'Nexus Digital Pay', plan: 'Professional Tier', status: 'ACTIVE', period_end: '2026-09-01', seats: 2 },
+                { id: 'd0ee...d42', customer: 'PayScale Global', plan: 'Growth Tier', status: 'ACTIVE', period_end: '2026-09-15', seats: 1 },
+                { id: 'd0ee...d43', customer: 'Apex Ledger Labs', plan: 'Enterprise Tier', status: 'ACTIVE', period_end: '2027-01-01', seats: 1 },
+                { id: 'd0ee...d44', customer: 'Quantum Capital', plan: 'Starter Tier', status: 'TRIALING', period_end: '2026-09-03', seats: 1 },
+                { id: 'd0ee...d45', customer: 'ByteFlow Fintech', plan: 'Growth Tier', status: 'PAST_DUE', period_end: '2026-09-10', seats: 1 },
+                { id: 'd0ee...d46', customer: 'Veloce Remit', plan: 'Starter Tier', status: 'CANCELED', period_end: '2026-08-01', seats: 1 }
+            ],
+            invoices: [
+                { number: 'INV-2026-000101', customer: 'Nexus Digital Pay', total: '$861.84', paid: '$861.84', remaining: '$0.00', status: 'PAID', due: '2026-08-05' },
+                { number: 'INV-2026-000102', customer: 'PayScale Global', total: '$144.83', paid: '$144.83', remaining: '$0.00', status: 'PAID', due: '2026-08-20' },
+                { number: 'INV-2026-000103', customer: 'Apex Ledger Labs', total: '$4,320.00', paid: '$4,320.00', remaining: '$0.00', status: 'PAID', due: '2026-01-15' },
+                { number: 'INV-2026-000104', customer: 'ByteFlow Fintech', total: '$160.92', paid: '$0.00', remaining: '$160.92', status: 'OPEN (OVERDUE)', due: '2026-08-15' }
+            ],
+            transactions: [
+                { ref: 'txn_safex_8829101', idempotency: 'idemp_nexus_aug_01', customer: 'Nexus Digital Pay', amount: '$861.84', status: 'SUCCEEDED', gateway: 'RESP_200_AUTH_SUCCESS' },
+                { ref: 'txn_safex_8829102', idempotency: 'idemp_payscale_aug_01', customer: 'PayScale Global', amount: '$144.83', status: 'SUCCEEDED', gateway: 'RESP_200_AUTH_SUCCESS' },
+                { ref: 'txn_safex_8829103', idempotency: 'idemp_apex_annual', customer: 'Apex Ledger Labs', amount: '$4,320.00', status: 'SUCCEEDED', gateway: 'RESP_200_AUTH_SUCCESS' },
+                { ref: 'txn_safex_8829104', idempotency: 'idemp_byteflow_fail', customer: 'ByteFlow Fintech', amount: '$160.92', status: 'FAILED', gateway: 'ERR_CARD_EXPIRED_DECLINED' }
+            ],
+            payment_methods: [
+                { customer: 'Nexus Digital Pay', type: 'CREDIT_CARD', brand: 'Visa', last4: '4242', expiry: '12/2028', default: 'YES' },
+                { customer: 'PayScale Global', type: 'CREDIT_CARD', brand: 'MasterCard', last4: '5555', expiry: '08/2027', default: 'YES' },
+                { customer: 'Apex Ledger Labs', type: 'CREDIT_CARD', brand: 'Amex', last4: '0005', expiry: '11/2029', default: 'YES' },
+                { customer: 'Quantum Capital', type: 'BANK_ACH', brand: 'Bank of America', last4: '9912', expiry: 'N/A', default: 'YES' },
+                { customer: 'CloudBank Neo', type: 'CREDIT_CARD', brand: 'Visa Corporate', last4: '1881', expiry: '05/2028', default: 'YES' },
+                { customer: 'ByteFlow Fintech', type: 'CREDIT_CARD', brand: 'MasterCard', last4: '4444', expiry: '03/2026', default: 'YES' }
+            ],
+            usage_records: [
+                { customer_sub: 'Nexus Digital (Pro)', metric: 'API_REQUESTS', used: '342,190 requests', unit_price: '$0.0001', recorded: '2026-08-25' },
+                { customer_sub: 'Nexus Digital (Pro)', metric: 'TRANSACTION_VOLUME_USD', used: '$850,000 volume', unit_price: '$0.0005', recorded: '2026-08-25' },
+                { customer_sub: 'PayScale (Growth)', metric: 'API_REQUESTS', used: '84,120 requests', unit_price: '$0.0001', recorded: '2026-08-26' },
+                { customer_sub: 'Apex Ledger (Enterprise)', metric: 'API_REQUESTS', used: '2,894,000 requests', unit_price: '$0.00005', recorded: '2026-08-28' }
+            ],
+            audit_logs: [
+                { time: '2026-08-01 07:55:10', customer: 'Nexus Digital Pay', action: 'PLAN_UPGRADE_INITIATED', actor: 'billing@nexuspay.io', ip: '192.168.1.45' },
+                { time: '2026-08-01 08:00:00', customer: 'Nexus Digital Pay', action: 'INVOICE_GENERATED (INV-000101)', actor: 'system.billing@safex', ip: '10.0.0.1' },
+                { time: '2026-08-01 08:02:15', customer: 'Nexus Digital Pay', action: 'PAYMENT_SETTLED ($861.84)', actor: 'gateway.webhook@stripe', ip: '54.187.21.9' },
+                { time: '2026-08-10 00:05:00', customer: 'ByteFlow Fintech', action: 'PAYMENT_FAILED_DUNNING_START', actor: 'system.billing@safex', ip: '10.0.0.1' }
+            ]
+        };
+
+        const queries = {
+            1: {
+                sql: `SELECT 
+    p.name AS plan_tier,
+    COUNT(s.id) AS active_subscribers,
+    SUM(CASE WHEN p.billing_interval = 'MONTHLY' THEN p.base_price * s.seat_quantity
+             WHEN p.billing_interval = 'YEARLY' THEN (p.base_price * s.seat_quantity) / 12.0 END) AS normalized_mrr,
+    SUM(CASE WHEN p.billing_interval = 'MONTHLY' THEN (p.base_price * s.seat_quantity) * 12.0
+             WHEN p.billing_interval = 'YEARLY' THEN (p.base_price * s.seat_quantity) END) AS normalized_arr
+FROM subscriptions s
+JOIN pricing_plans p ON s.plan_id = p.id
+WHERE s.status = 'ACTIVE'
+GROUP BY p.name, p.billing_interval;`,
+                results: [
+                    { plan_tier: 'Professional Tier (Monthly)', active_subscribers: 1, seats: 2, normalized_mrr: '$798.00', normalized_arr: '$9,576.00' },
+                    { plan_tier: 'Enterprise Tier (Annual)', active_subscribers: 1, seats: 1, normalized_mrr: '$375.00', normalized_arr: '$4,500.00' },
+                    { plan_tier: 'Growth Tier (Monthly)', active_subscribers: 1, seats: 1, normalized_mrr: '$149.00', normalized_arr: '$1,788.00' }
+                ]
+            },
+            2: {
+                sql: `SELECT 
+    o.name AS organization_name,
+    p.name AS current_plan,
+    s.status AS subscription_status,
+    s.current_period_end AS next_renewal,
+    pm.card_brand || ' (**** ' || pm.card_last4 || ')' AS payment_method,
+    COALESCE(SUM(inv.total_amount), 0.00) AS lifetime_billed
+FROM organizations o
+JOIN subscriptions s ON o.id = s.organization_id
+JOIN pricing_plans p ON s.plan_id = p.id
+LEFT JOIN payment_methods pm ON s.default_payment_method_id = pm.id
+LEFT JOIN invoices inv ON o.id = inv.organization_id
+WHERE o.billing_email = 'billing@nexuspay.io'
+GROUP BY o.name, p.name, s.status, s.current_period_end, pm.card_brand, pm.card_last4;`,
+                results: [
+                    { organization_name: 'Nexus Digital Pay', current_plan: 'Professional Tier', status: 'ACTIVE', next_renewal: '2026-09-01', payment_method: 'Visa (**** 4242)', lifetime_billed: '$861.84' }
+                ]
+            },
+            3: {
+                sql: `SELECT 
+    inv.invoice_number,
+    o.name AS organization_name,
+    inv.total_amount,
+    inv.amount_remaining,
+    inv.due_date,
+    EXTRACT(DAY FROM (CURRENT_TIMESTAMP - inv.due_date)) AS days_overdue,
+    inv.status AS invoice_status
+FROM invoices inv
+JOIN organizations o ON inv.organization_id = o.id
+WHERE inv.status = 'OPEN' AND inv.due_date < CURRENT_TIMESTAMP;`,
+                results: [
+                    { invoice_number: 'INV-2026-000104', organization_name: 'ByteFlow Fintech', total_amount: '$160.92', amount_remaining: '$160.92', due_date: '2026-08-15', days_overdue: '16 Days', status: 'OPEN (DUNNING)' }
+                ]
+            },
+            4: {
+                sql: `SELECT 
+    o.name AS organization_name,
+    p.name AS plan_name,
+    p.monthly_api_credit_limit AS base_limit,
+    SUM(u.quantity_used) AS consumed_requests,
+    GREATEST(0, SUM(u.quantity_used) - p.monthly_api_credit_limit) AS overage_units,
+    (GREATEST(0, SUM(u.quantity_used) - p.monthly_api_credit_limit) * 0.0002) AS overage_charge_usd
+FROM subscriptions s
+JOIN organizations o ON s.organization_id = o.id
+JOIN pricing_plans p ON s.plan_id = p.id
+JOIN usage_records u ON s.id = u.subscription_id AND u.metric_type = 'API_REQUESTS'
+WHERE s.status = 'ACTIVE'
+GROUP BY o.name, p.name, p.monthly_api_credit_limit;`,
+                results: [
+                    { organization_name: 'Nexus Digital Pay', plan_name: 'Professional Tier', base_limit: '500,000', consumed_requests: '342,190', overage_units: '0 (Within Limit)', overage_charge_usd: '$0.00' },
+                    { organization_name: 'PayScale Global', plan_name: 'Growth Tier', base_limit: '100,000', consumed_requests: '84,120', overage_units: '0 (Within Limit)', overage_charge_usd: '$0.00' }
+                ]
+            },
+            5: {
+                sql: `SELECT 
+    inv.invoice_number,
+    ili.description,
+    ili.quantity,
+    ili.unit_amount,
+    ili.total_amount,
+    inv.tax_amount,
+    inv.total_amount AS invoice_total
+FROM invoices inv
+JOIN invoice_line_items ili ON inv.id = ili.invoice_id
+WHERE inv.invoice_number = 'INV-2026-000101';`,
+                results: [
+                    { invoice_number: 'INV-2026-000101', description: 'Professional Tier Subscription (2 Seats @ $399.00/mo)', quantity: 2, unit_amount: '$399.00', line_total: '$798.00', tax_amount: '$63.84', invoice_total: '$861.84' }
+                ]
+            },
+            6: {
+                sql: `SELECT 
+    t.transaction_reference,
+    t.idempotency_key,
+    o.name AS customer_name,
+    t.amount,
+    t.status,
+    t.gateway_response_code
+FROM transactions t
+JOIN organizations o ON t.organization_id = o.id
+ORDER BY t.created_at DESC;`,
+                results: [
+                    { transaction_reference: 'txn_safex_8829101', idempotency_key: 'idemp_nexus_aug_2026_01', customer_name: 'Nexus Digital Pay', amount: '$861.84', status: 'SUCCEEDED', gateway_code: 'RESP_200_AUTH_SUCCESS' },
+                    { transaction_reference: 'txn_safex_8829102', idempotency_key: 'idemp_payscale_aug_2026_01', customer_name: 'PayScale Global', amount: '$144.83', status: 'SUCCEEDED', gateway_code: 'RESP_200_AUTH_SUCCESS' },
+                    { transaction_reference: 'txn_safex_8829103', idempotency_key: 'idemp_apex_annual_2026', customer_name: 'Apex Ledger Labs', amount: '$4,320.00', status: 'SUCCEEDED', gateway_code: 'RESP_200_AUTH_SUCCESS' },
+                    { transaction_reference: 'txn_safex_8829104', idempotency_key: 'idemp_byteflow_fail_01', customer_name: 'ByteFlow Fintech', amount: '$160.92', status: 'FAILED', gateway_code: 'ERR_CARD_DECLINED' }
+                ]
+            },
+            7: {
+                sql: `SELECT 
+    COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) AS active_count,
+    COUNT(CASE WHEN status = 'TRIALING' THEN 1 END) AS trialing_count,
+    COUNT(CASE WHEN status = 'PAST_DUE' THEN 1 END) AS past_due_count,
+    COUNT(CASE WHEN status = 'CANCELED' THEN 1 END) AS canceled_count,
+    ROUND((COUNT(CASE WHEN status = 'CANCELED' THEN 1 END)::NUMERIC / COUNT(*)::NUMERIC) * 100.0, 2) AS churn_rate_pct
+FROM subscriptions;`,
+                results: [
+                    { active_count: 3, trialing_count: 1, past_due_count: 1, canceled_count: 1, total_subscriptions: 6, churn_rate_pct: '16.67%' }
+                ]
+            }
+        };
+
+        let currentQueryId = 1;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+            if (activeBtn) activeBtn.classList.add('active');
+
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function loadTable(tableName, element) {
+            if (element) {
+                document.querySelectorAll('.tbl-pill').forEach(pill => pill.classList.remove('active'));
+                element.classList.add('active');
+            }
+
+            const data = database[tableName] || [];
+            if (data.length === 0) {
+                document.getElementById('tableContainer').innerHTML = '<p style="padding: 1rem; color: #94a3b8;">No records found.</p>';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            let html = '<table><thead><tr>';
+            headers.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
+            html += '</tr></thead><tbody>';
+
+            data.forEach(row => {
+                html += '<tr>';
+                headers.forEach(h => {
+                    let val = row[h];
+                    if (val === 'ACTIVE' || val === 'SUCCEEDED' || val === 'PAID') {
+                        val = `<span class="badge badge-success">${val}</span>`;
+                    } else if (val === 'TRIALING' || val === 'OPEN (OVERDUE)') {
+                        val = `<span class="badge badge-warning">${val}</span>`;
+                    } else if (val === 'PAST_DUE' || val === 'FAILED' || val === 'CANCELED') {
+                        val = `<span class="badge badge-danger">${val}</span>`;
+                    }
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        function selectQuery(id, el) {
+            currentQueryId = id;
+            document.querySelectorAll('.query-item').forEach(i => i.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            document.getElementById('sqlDisplay').textContent = queries[id].sql;
+            executeCurrentQuery();
+        }
+
+        function executeCurrentQuery() {
+            const queryData = queries[currentQueryId];
+            const results = queryData.results || [];
+            if (results.length === 0) {
+                document.getElementById('queryResultContainer').innerHTML = '<p style="padding: 1rem; color: #94a3b8;">Query executed with 0 rows returned.</p>';
+                return;
+            }
+
+            const headers = Object.keys(results[0]);
+            let html = '<table><thead><tr>';
+            headers.forEach(h => html += `<th>${h.replace(/_/g, ' ')}</th>`);
+            html += '</tr></thead><tbody>';
+
+            results.forEach(row => {
+                html += '<tr>';
+                headers.forEach(h => {
+                    let val = row[h];
+                    if (val === 'ACTIVE' || val === 'SUCCEEDED' || val === 'PAID') {
+                        val = `<span class="badge badge-success">${val}</span>`;
+                    } else if (val === 'TRIALING' || val === 'OPEN (DUNNING)') {
+                        val = `<span class="badge badge-warning">${val}</span>`;
+                    } else if (val === 'FAILED' || val === 'PAST_DUE') {
+                        val = `<span class="badge badge-danger">${val}</span>`;
+                    }
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('queryResultContainer').innerHTML = html;
+        }
+
+        // Initialize on load
+        window.onload = () => {
+            loadTable('organizations');
+            selectQuery(1);
+        };
+    </script>
+</body>
+</html>

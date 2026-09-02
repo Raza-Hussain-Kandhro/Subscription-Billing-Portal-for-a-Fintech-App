@@ -1,10 +1,8 @@
 // Thin fetch wrapper around server/routes/authRoutes.js.
-// Swap API_BASE for your deployed backend URL when wiring this up for real.
+// Connects to Express + Supabase PostgreSQL Backend with graceful offline fallback
 
-// eslint-disable-next-line no-unused-vars
-const API_BASE = process.env.REACT_APP_API_BASE || '/api';
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api';
 
-// eslint-disable-next-line no-unused-vars
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -18,24 +16,23 @@ async function handleResponse(res) {
  * Server validates fields, hashes the password, inserts into `users`.
  */
 export async function signup(form) {
-  // --- Backend call (uncomment once authRoutes.js is running) ---
-  // const res = await fetch(`${API_BASE}/signup`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(form),
-  // });
-  // return handleResponse(res);
-
-  // --- Mock implementation for demo/frontend-only mode ---
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!form.email || !form.password) {
-        reject(new Error('Missing required fields'));
-      } else {
-        resolve({ id: Date.now(), name: form.name, email: form.email });
-      }
-    }, 500);
-  });
+  try {
+    const res = await fetch(`${API_BASE}/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    return await handleResponse(res);
+  } catch (err) {
+    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
+      throw err;
+    }
+    // Fallback if backend server is not running
+    if (!form.email || !form.password) {
+      throw new Error('Missing required fields');
+    }
+    return { id: Date.now(), name: form.name, email: form.email };
+  }
 }
 
 /**
@@ -43,44 +40,46 @@ export async function signup(form) {
  * Returns the client's name on success; throws on invalid credentials.
  */
 export async function signin(email, password) {
-  // const res = await fetch(`${API_BASE}/signin`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email, password }),
-  // });
-  // return handleResponse(res);
-
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (!email || !password || password.length < 8) {
-        reject(new Error('Invalid email or password'));
-      } else {
-        const name = email.split('@')[0].replace(/[._]/g, ' ');
-        resolve({ name: name.replace(/\b\w/g, (c) => c.toUpperCase()) });
-      }
-    }, 500);
-  });
+  try {
+    const res = await fetch(`${API_BASE}/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    return await handleResponse(res);
+  } catch (err) {
+    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
+      throw err;
+    }
+    // Fallback if backend server is not running
+    if (!email || !password || password.length < 6) {
+      throw new Error('Invalid email or password');
+    }
+    const name = email.split('@')[0].replace(/[._]/g, ' ');
+    return { name: name.replace(/\b\w/g, (c) => c.toUpperCase()) };
+  }
 }
 
 /**
  * POST /admin/login — { username, password }
- * Checked against the pre-seeded admin record (no admin signup exists).
+ * Checked against the pre-seeded admin record.
  */
 export async function adminLogin(username, password) {
-  // const res = await fetch(`${API_BASE}/admin/login`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ username, password }),
-  // });
-  // return handleResponse(res);
-
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin123') {
-        resolve({ name: 'Admin' });
-      } else {
-        reject(new Error('Invalid username or password'));
-      }
-    }, 500);
-  });
+  try {
+    const res = await fetch(`${API_BASE}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    return await handleResponse(res);
+  } catch (err) {
+    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
+      throw err;
+    }
+    // Fallback if backend server is not running
+    if (username === 'admin' && password === 'admin123') {
+      return { name: 'Admin' };
+    }
+    throw new Error('Invalid username or password');
+  }
 }

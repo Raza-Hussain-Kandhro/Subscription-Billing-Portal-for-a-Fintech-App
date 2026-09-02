@@ -1,0 +1,32 @@
+{
+  "name": "safex-fintech-subscription-billing",
+  "version": "1.0.0",
+  "description": "SafeX Fintech Subscription Billing Portal - Full Stack Architecture (Supabase PostgreSQL, Node.js/Express, React)",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
+    "test:db": "node server/scripts/testConnection.js",
+    "client": "npm start --prefix client",
+    "client:install": "npm install --prefix client"
+  },
+  "keywords": [
+    "fintech",
+    "subscription-billing",
+    "supabase",
+    "postgresql",
+    "express",
+    "nodejs",
+    "react",
+    "mrr"
+  ],
+  "author": "Ahmed Iqbal",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  }
+}
