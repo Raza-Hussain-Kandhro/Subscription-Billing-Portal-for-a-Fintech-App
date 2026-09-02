@@ -13,8 +13,8 @@ exports.getSubscriptionByUserId = async (req, res) => {
     const { userId } = req.params;
 
     try {
-        const isNumeric = !isNaN(userId);
-        const queryText = `
+        const isNumeric = !isNaN(userId) && !isNaN(parseFloat(userId));
+        let queryText = `
             SELECT 
                 s.id AS subscription_id,
                 s.status,
@@ -25,12 +25,18 @@ exports.getSubscriptionByUserId = async (req, res) => {
                 p.price AS plan_price
             FROM subscriptions s
             JOIN pricing_plans p ON s.plan_id = p.id
-            WHERE (${isNumeric ? 's.user_id = $1::integer' : 's.user_id IN (SELECT id FROM users WHERE LOWER(email) = LOWER($1))'})
-            ORDER BY s.created_at DESC
-            LIMIT 1;
         `;
 
-        const { rows } = await db.query(queryText, [userId]);
+        let params = [];
+        if (isNumeric) {
+            queryText += ` WHERE s.user_id = $1 ORDER BY s.created_at DESC LIMIT 1;`;
+            params = [parseInt(userId, 10)];
+        } else {
+            queryText += ` WHERE s.user_id IN (SELECT id FROM users WHERE LOWER(email) = LOWER($1)) ORDER BY s.created_at DESC LIMIT 1;`;
+            params = [String(userId).trim()];
+        }
+
+        const { rows } = await db.query(queryText, params);
 
         if (rows.length === 0) {
             return res.status(200).json({
@@ -93,9 +99,12 @@ exports.changePlan = async (req, res) => {
         const plan = planRes.rows[0];
 
         // 2. Resolve User ID
-        let resolvedUserId = isNaN(userId) ? null : parseInt(userId);
-        if (!resolvedUserId) {
-            const userLookup = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [userId]);
+        let resolvedUserId = null;
+        const isNumeric = !isNaN(userId) && !isNaN(parseFloat(userId));
+        if (isNumeric) {
+            resolvedUserId = parseInt(userId, 10);
+        } else {
+            const userLookup = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [String(userId).trim()]);
             if (userLookup.rows.length > 0) {
                 resolvedUserId = userLookup.rows[0].id;
             } else {

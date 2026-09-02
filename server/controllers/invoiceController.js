@@ -13,28 +13,24 @@ exports.getInvoicesByUserId = async (req, res) => {
     const { userId } = req.params;
 
     try {
+        const isNumeric = !isNaN(userId) && !isNaN(parseFloat(userId));
         let queryText = `
             SELECT id, invoice_number, amount, tax_amount, total_amount, status, 
                    TO_CHAR(invoice_date, 'YYYY-MM-DD') AS invoice_date, 
                    due_date, paid_at
             FROM invoices
-            WHERE (user_id = $1::integer OR user_id IN (SELECT id FROM users WHERE LOWER(email) = LOWER($1)))
-            ORDER BY invoice_date DESC;
         `;
 
-        let { rows } = await db.query(queryText, [isNaN(userId) ? userId : parseInt(userId)]);
-
-        if (rows.length === 0) {
-            // If user has no custom invoices yet, fetch general sample or seed invoices
-            const sampleRes = await db.query(`
-                SELECT id, invoice_number, amount, tax_amount, total_amount, status, 
-                       TO_CHAR(invoice_date, 'YYYY-MM-DD') AS invoice_date
-                FROM invoices 
-                ORDER BY invoice_date DESC 
-                LIMIT 5;
-            `);
-            rows = sampleRes.rows;
+        let params = [];
+        if (isNumeric) {
+            queryText += ` WHERE user_id = $1 ORDER BY invoice_date DESC;`;
+            params = [parseInt(userId, 10)];
+        } else {
+            queryText += ` WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = LOWER($1)) ORDER BY invoice_date DESC;`;
+            params = [String(userId).trim()];
         }
+
+        let { rows } = await db.query(queryText, params);
 
         const formatted = rows.map(inv => ({
             id: inv.id,
@@ -47,14 +43,7 @@ exports.getInvoicesByUserId = async (req, res) => {
         return res.status(200).json(formatted);
     } catch (error) {
         console.error('Error fetching user invoices:', error.message);
-        // Fallback for resilient UI
-        return res.status(200).json([
-            { id: 1, invoice_date: '2026-08-01', amount: 29.0, status: 'Paid' },
-            { id: 2, invoice_date: '2026-07-01', amount: 29.0, status: 'Paid' },
-            { id: 3, invoice_date: '2026-06-01', amount: 29.0, status: 'Paid' },
-            { id: 4, invoice_date: '2026-05-01', amount: 9.0, status: 'Paid' },
-            { id: 5, invoice_date: '2026-09-01', amount: 29.0, status: 'Pending' }
-        ]);
+        return res.status(200).json([]);
     }
 };
 
