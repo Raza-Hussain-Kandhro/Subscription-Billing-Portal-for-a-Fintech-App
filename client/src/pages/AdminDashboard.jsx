@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../styles/Dashboard.css';
 import '../styles/AdminDashboard.css';
-import { MOCK_CLIENTS, MOCK_PLANS } from '../mockData';
 import { createPlan, updatePlan, deletePlan } from '../api/plans';
 
 const TABS = [
@@ -15,13 +14,7 @@ const EMPTY_PLAN_FORM = { name: '', price: '', features: '' };
 
 /**
  * AdminDashboard
- * SRS 3.2.2, 3.2.3, 3.2.4 — one page with three tabs:
- *  - Overview: total clients, active subscriptions, total plans
- *  - Clients: management table with a Deactivate action
- *  - Plans: management view with Add / Edit / Delete
- *
- * The active tab is derived from the current route so /admin,
- * /admin/clients and /admin/plans each deep-link correctly.
+ * Full real-time Admin Management connected to Supabase PostgreSQL
  */
 function AdminDashboard() {
   const location = useLocation();
@@ -29,19 +22,47 @@ function AdminDashboard() {
 
   const activeTab = TABS.find((t) => t.path === location.pathname)?.key || 'overview';
 
-  const [clients, setClients] = useState(MOCK_CLIENTS);
-  const [plans, setPlans] = useState(MOCK_PLANS);
+  const [clients, setClients] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState(null); // plan being edited, or 'new'
   const [planForm, setPlanForm] = useState(EMPTY_PLAN_FORM);
 
+  const loadData = () => {
+    Promise.all([
+      fetch('/api/admin/clients').then((r) => r.json()).catch(() => []),
+      fetch('/api/plans').then((r) => r.json()).catch(() => []),
+    ]).then(([clientsData, plansData]) => {
+      setClients(Array.isArray(clientsData) ? clientsData : []);
+      setPlans(Array.isArray(plansData) ? plansData : []);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   const stats = {
     totalClients: clients.length,
-    activeSubscriptions: clients.filter((c) => c.status === 'Active').length,
+    activeSubscriptions: clients.filter((c) => c.status === 'Active' && c.plan !== 'No Plan').length,
     totalPlans: plans.length,
   };
 
-  const handleDeactivate = (id) => {
-    setClients((prev) => prev.map((c) => (c.id === id ? { ...c, status: 'Inactive' } : c)));
+  const handleDeactivate = async (id) => {
+    const target = clients.find((c) => c.id === id);
+    const nextStatus = target?.status === 'Active' ? 'Inactive' : 'Active';
+
+    try {
+      await fetch(`/api/admin/clients/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setClients((prev) => prev.map((c) => (c.id === id ? { ...c, status: nextStatus } : c)));
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
   };
 
   const openNewPlan = () => {
@@ -50,7 +71,8 @@ function AdminDashboard() {
   };
 
   const openEditPlan = (plan) => {
-    setPlanForm({ name: plan.name, price: plan.price, features: plan.features.join(', ') });
+    const feats = Array.isArray(plan.features) ? plan.features.join(', ') : plan.features || '';
+    setPlanForm({ name: plan.name, price: plan.price, features: feats });
     setEditingPlan(plan);
   };
 
@@ -68,13 +90,12 @@ function AdminDashboard() {
     };
 
     if (editingPlan === 'new') {
-      const created = await createPlan(payload);
-      setPlans((prev) => [...prev, { ...payload, id: created.id }]);
+      await createPlan(payload);
     } else {
       await updatePlan(editingPlan.id, payload);
-      setPlans((prev) => prev.map((p) => (p.id === editingPlan.id ? { ...p, ...payload } : p)));
     }
     closePlanForm();
+    loadData();
   };
 
   const handleDeletePlan = async (id) => {
@@ -86,7 +107,7 @@ function AdminDashboard() {
     <div className="page-content">
       <div className="page-heading">
         <h1>Admin dashboard</h1>
-        <p>Manage clients and subscription plans across the portal.</p>
+        <p>Live management of clients, billing accounts, and subscription tiers.</p>
       </div>
 
       <div className="admin-tabs">
@@ -101,61 +122,62 @@ function AdminDashboard() {
         ))}
       </div>
 
-      {activeTab === 'overview' && (
+      {loading && <p className="text-muted">Loading live administrative data…</p>}
+
+      {!loading && activeTab === 'overview' && (
         <div className="metric-grid admin-metric-grid">
           <div className="card metric-card">
-            <span className="metric-label">Total clients</span>
+            <span className="metric-label">Total registered clients</span>
             <span className="metric-value">{stats.totalClients}</span>
+            <span className="text-muted metric-caption">Live from Supabase Database</span>
           </div>
           <div className="card metric-card">
             <span className="metric-label">Active subscriptions</span>
             <span className="metric-value">{stats.activeSubscriptions}</span>
+            <span className="text-muted metric-caption">Paying clients with active tier</span>
           </div>
           <div className="card metric-card">
-            <span className="metric-label">Total plans</span>
+            <span className="metric-label">Total pricing plans</span>
             <span className="metric-value">{stats.totalPlans}</span>
+            <span className="text-muted metric-caption">Configured billing tiers</span>
           </div>
         </div>
       )}
 
-      {activeTab === 'clients' && (
+      {!loading && activeTab === 'clients' && (
         <div className="card">
-          <div className="card-section section-heading">
-            <h2>Registered clients</h2>
-            <span className="text-muted">{clients.length} total</span>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="data-table">
+          <div className="table-responsive">
+            <table className="table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Plan</th>
+                  <th>Client Name</th>
+                  <th>Email</th>
+                  <th>Current Plan</th>
                   <th>Status</th>
-                  <th></th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
+                {clients.map((c) => (
+                  <tr key={c.id}>
                     <td>
-                      <div className="client-name-cell">
-                        <span>{client.name}</span>
-                        <span className="text-muted">{client.email}</span>
-                      </div>
+                      <strong>{c.name}</strong>
                     </td>
-                    <td>{client.plan}</td>
+                    <td className="text-muted">{c.email}</td>
                     <td>
-                      <span className={`badge ${client.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
-                        {client.status}
+                      <span className="badge badge-primary">{c.plan || 'No Plan'}</span>
+                    </td>
+                    <td>
+                      <span className={`badge ${c.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
+                        {c.status}
                       </span>
                     </td>
-                    <td className="admin-table-actions">
+                    <td>
                       <button
-                        className="btn btn-sm btn-danger"
-                        disabled={client.status === 'Inactive'}
-                        onClick={() => handleDeactivate(client.id)}
+                        className={`btn btn-sm ${c.status === 'Active' ? 'btn-secondary' : 'btn-primary'}`}
+                        onClick={() => handleDeactivate(c.id)}
                       >
-                        Deactivate
+                        {c.status === 'Active' ? 'Deactivate' : 'Activate'}
                       </button>
                     </td>
                   </tr>
@@ -166,72 +188,74 @@ function AdminDashboard() {
         </div>
       )}
 
-      {activeTab === 'plans' && (
-        <div className="card">
-          <div className="card-section section-heading">
-            <h2>Subscription plans</h2>
-            <button className="btn btn-primary btn-sm" onClick={openNewPlan}>
-              + Add new plan
+      {!loading && activeTab === 'plans' && (
+        <div>
+          <div className="admin-actions-bar">
+            <button className="btn btn-primary" onClick={openNewPlan}>
+              + Add New Plan
             </button>
           </div>
 
           {editingPlan && (
-            <div className="card-section">
-              <form className="plan-form" onSubmit={savePlan}>
+            <div className="card modal-card">
+              <h3>{editingPlan === 'new' ? 'Create New Pricing Plan' : 'Edit Plan'}</h3>
+              <form onSubmit={savePlan}>
                 <div className="field">
-                  <label htmlFor="plan-name">Plan name</label>
+                  <label>Plan Name</label>
                   <input
-                    id="plan-name"
+                    type="text"
+                    required
                     value={planForm.name}
-                    onChange={(e) => setPlanForm((p) => ({ ...p, name: e.target.value }))}
-                    required
+                    onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="plan-price">Price ($/month)</label>
+                  <label>Monthly Price ($)</label>
                   <input
-                    id="plan-price"
                     type="number"
-                    min="0"
-                    value={planForm.price}
-                    onChange={(e) => setPlanForm((p) => ({ ...p, price: e.target.value }))}
                     required
+                    min="0"
+                    step="0.01"
+                    value={planForm.price}
+                    onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="plan-features">Features (comma-separated)</label>
+                  <label>Features (comma-separated)</label>
                   <input
-                    id="plan-features"
+                    type="text"
+                    placeholder="1 billing account, Priority support, API access"
                     value={planForm.features}
-                    onChange={(e) => setPlanForm((p) => ({ ...p, features: e.target.value }))}
-                    placeholder="Priority support, Advanced reporting"
+                    onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })}
                   />
                 </div>
-                <div className="plan-form-actions">
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={closePlanForm}>
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={closePlanForm}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary btn-sm">
-                    {editingPlan === 'new' ? 'Add plan' : 'Save changes'}
+                  <button type="submit" className="btn btn-primary">
+                    Save Plan
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          <div className="admin-plan-list">
-            {plans.map((plan) => (
-              <div className="admin-plan-row" key={plan.id}>
-                <div>
-                  <span className="admin-plan-name">{plan.name}</span>
-                  <span className="text-muted admin-plan-features">{plan.features.join(' · ')}</span>
-                </div>
-                <div className="admin-plan-row-right">
-                  <span className="admin-plan-price">${plan.price}/mo</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => openEditPlan(plan)}>
+          <div className="plan-grid">
+            {plans.map((p) => (
+              <div key={p.id} className="card plan-card">
+                <h3>{p.name}</h3>
+                <div className="plan-price">${p.price}<span>/mo</span></div>
+                <ul className="plan-features">
+                  {(Array.isArray(p.features) ? p.features : []).map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+                <div className="plan-actions">
+                  <button className="btn btn-sm btn-secondary" onClick={() => openEditPlan(p)}>
                     Edit
                   </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => handleDeletePlan(plan.id)}>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDeletePlan(p.id)}>
                     Delete
                   </button>
                 </div>

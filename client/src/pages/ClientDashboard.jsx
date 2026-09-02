@@ -1,54 +1,68 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles/Dashboard.css';
-import { MOCK_CLIENT_SUBSCRIPTION } from '../mockData';
 
 /**
  * ClientDashboard
- * SRS 3.1.3 — greeting, current plan, next billing date, amount due,
- * plan status. Data is loaded into local state so it's easy to swap
- * the mock import for a real GET /subscriptions/:userId call.
- *
- * Props:
- *  - userName: string
+ * Dynamic user billing dashboard connected to Supabase PostgreSQL
  */
-function ClientDashboard({ userName = 'there' }) {
+function ClientDashboard({ session, userName = 'there' }) {
   const [subscription, setSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const userId = session?.id || session?.email || 1;
 
   useEffect(() => {
-    fetch('/api/subscriptions/1')
-      .then(res => res.json())
-      .then(data => setSubscription(data))
-      .catch(() => setSubscription(MOCK_CLIENT_SUBSCRIPTION));
-  }, []);
+    fetch(`/api/subscriptions/${userId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setSubscription(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error loading subscription:', err);
+        setSubscription({
+          planName: 'No Active Plan',
+          status: 'Inactive',
+          nextBillingDate: null,
+          amountDue: 0.0,
+        });
+        setLoading(false);
+      });
+  }, [userId]);
 
-  if (!subscription) {
+  if (loading || !subscription) {
     return (
       <div className="page-content">
-        <p className="text-muted">Loading your dashboard…</p>
+        <p className="text-muted">Loading your billing dashboard…</p>
       </div>
     );
   }
 
   const isActive = subscription.status === 'Active';
-  const formattedDate = new Date(subscription.nextBillingDate).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const hasPlan = subscription.planName && subscription.planName !== 'No Active Plan';
+  const formattedDate = subscription.nextBillingDate
+    ? new Date(subscription.nextBillingDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : 'Not Scheduled';
 
   return (
     <div className="page-content">
       <div className="page-heading">
         <h1>Welcome back, {userName.split(' ')[0]}</h1>
-        <p>Here's a quick look at your subscription.</p>
+        <p>Here's a quick look at your subscription & billing status.</p>
       </div>
 
       <div className="metric-grid">
         <div className="card metric-card">
           <span className="metric-label">Current plan</span>
           <span className="metric-value">{subscription.planName}</span>
-          <span className="text-muted metric-caption">Change it anytime from Plans</span>
+          <span className="text-muted metric-caption">
+            {hasPlan ? 'Change or upgrade anytime' : 'Choose a plan to activate billing'}
+          </span>
         </div>
 
         <div className="card metric-card">
@@ -57,30 +71,38 @@ function ClientDashboard({ userName = 'there' }) {
             {subscription.status}
           </span>
           <span className="text-muted metric-caption">
-            {isActive ? 'Billing is running normally' : 'Reactivate to restore access'}
+            {isActive ? 'Billing is running normally' : 'Activate a plan to restore access'}
           </span>
         </div>
 
         <div className="card metric-card">
           <span className="metric-label">Next billing date</span>
           <span className="metric-value">{formattedDate}</span>
-          <span className="text-muted metric-caption">Auto-billed to your account on file</span>
+          <span className="text-muted metric-caption">
+            {isActive ? 'Auto-billed to your account on file' : 'No upcoming charges'}
+          </span>
         </div>
 
         <div className="card metric-card">
           <span className="metric-label">Amount due</span>
-          <span className="metric-value">${subscription.amountDue.toFixed(2)}</span>
-          <span className="text-muted metric-caption">Due on next billing date</span>
+          <span className="metric-value">${(subscription.amountDue || 0).toFixed(2)}</span>
+          <span className="text-muted metric-caption">
+            {isActive ? 'Due on next billing date' : 'No balance due'}
+          </span>
         </div>
       </div>
 
       <div className="card dashboard-cta">
         <div>
-          <h3>Want more from your plan?</h3>
-          <p className="text-muted">Compare tiers and upgrade or downgrade in a couple of clicks.</p>
+          <h3>{hasPlan ? 'Want to change or upgrade your plan?' : 'Choose a Subscription Plan'}</h3>
+          <p className="text-muted">
+            {hasPlan
+              ? 'Compare tiers and switch plans with automated prorated billing.'
+              : 'Select Basic, Pro, or Premium tier to activate your fintech workspace.'}
+          </p>
         </div>
         <Link to="/plans" className="btn btn-primary">
-          View & change plan
+          {hasPlan ? 'View & change plan' : 'Select a Plan'}
         </Link>
       </div>
     </div>

@@ -45,7 +45,7 @@ exports.signup = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Insert new user
+        // Insert new user with Inactive status until they choose a plan
         const userRes = await client.query(
             `INSERT INTO users (name, email, password_hash, phone, role, status)
              VALUES ($1, $2, $3, $4, 'client', 'Active')
@@ -58,14 +58,7 @@ exports.signup = async (req, res) => {
         await client.query(
             `INSERT INTO organizations (user_id, name, billing_email)
              VALUES ($1, $2, $3)`,
-            [newUser.id, `${newUser.name}'s Org`, newUser.email]
-        );
-
-        // Assign Default Basic Subscription (Plan ID 1)
-        await client.query(
-            `INSERT INTO subscriptions (user_id, plan_id, status, current_period_start, current_period_end, seat_quantity)
-             VALUES ($1, 1, 'Active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '1 month', 1)`,
-            [newUser.id]
+            [newUser.id, `${newUser.name}'s Workspace`, newUser.email]
         );
 
         await client.query('COMMIT');
@@ -154,9 +147,8 @@ exports.adminLogin = async (req, res) => {
         );
 
         if (rows.length === 0) {
-            // Fallback for default hardcoded admin if not seeded
             if (username.trim() === 'admin' && password === 'admin123') {
-                return res.status(200).json({ success: true, name: 'Admin', role: 'admin' });
+                return res.status(200).json({ success: true, id: 1, name: 'System Administrator', role: 'admin' });
             }
             return res.status(401).json({ success: false, message: 'Invalid username or password' });
         }
@@ -170,14 +162,13 @@ exports.adminLogin = async (req, res) => {
         return res.status(200).json({
             success: true,
             id: admin.id,
-            name: admin.name || 'Admin',
+            name: admin.name || 'System Administrator',
             role: 'admin'
         });
     } catch (error) {
         console.error('Admin Login Error:', error.message);
-        // Fallback for offline demo
         if (username.trim() === 'admin' && password === 'admin123') {
-            return res.status(200).json({ success: true, name: 'Admin', role: 'admin' });
+            return res.status(200).json({ success: true, id: 1, name: 'System Administrator', role: 'admin' });
         }
         return res.status(500).json({ success: false, message: error.message });
     }

@@ -4,18 +4,26 @@ import { getInvoices } from '../api/invoices';
 
 /**
  * BillingHistory
- * SRS 3.1.5 — a list/table of past invoices: date, amount, status.
+ * Live list/table of past invoices from Supabase
  */
-function BillingHistory() {
+function BillingHistory({ session }) {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const userId = session?.id || session?.email || 1;
+
   useEffect(() => {
-    getInvoices(1).then((data) => {
-      setInvoices(data);
-      setLoading(false);
-    });
-  }, []);
+    getInvoices(userId)
+      .then((data) => {
+        setInvoices(data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching invoices:', err);
+        setInvoices([]);
+        setLoading(false);
+      });
+  }, [userId]);
 
   return (
     <div className="page-content">

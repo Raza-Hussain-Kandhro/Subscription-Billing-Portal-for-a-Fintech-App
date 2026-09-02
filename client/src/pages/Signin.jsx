@@ -49,7 +49,7 @@ function Signin({ onAuthenticated }) {
       const result =
         role === 'admin' ? await adminLogin(form.identifier, form.password) : await signin(form.identifier, form.password);
 
-      onAuthenticated({ role, name: result.name });
+      onAuthenticated({ role, name: result.name, id: result.id, email: result.email || form.identifier });
       navigate(role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
       // SRS 3.1.2: "Invalid email or password" on failure

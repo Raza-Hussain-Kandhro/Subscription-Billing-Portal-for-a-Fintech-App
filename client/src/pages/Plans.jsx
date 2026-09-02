@@ -5,20 +5,31 @@ import '../styles/Dashboard.css';
 
 /**
  * Plans (View & Change Plan)
- * SRS 3.1.4 — shows Basic/Pro/Premium with price + features. Button
- * label is dynamic: "Current Plan" (disabled), "Upgrade" if the target
- * tier is priced higher than the client's current plan, "Downgrade"
- * otherwise.
+ * Connects directly to Supabase PostgreSQL for dynamic user plan changes
  */
-function Plans() {
+function Plans({ session }) {
   const [plans, setPlans] = useState([]);
-  const [currentPlanId, setCurrentPlanId] = useState(2); // demo: client is on Pro
+  const [currentPlanId, setCurrentPlanId] = useState(null);
   const [confirming, setConfirming] = useState(null);
   const [banner, setBanner] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const userId = session?.id || session?.email || 1;
 
   useEffect(() => {
-    getPlans().then(setPlans);
-  }, []);
+    // 1. Fetch available plans
+    getPlans().then((data) => setPlans(data || []));
+
+    // 2. Fetch current client's actual subscription
+    fetch(`/api/subscriptions/${userId}`)
+      .then((res) => res.json())
+      .then((sub) => {
+        if (sub && sub.planId) {
+          setCurrentPlanId(sub.planId);
+        }
+      })
+      .catch((err) => console.error('Error loading current plan:', err));
+  }, [userId]);
 
   const currentPlan = plans.find((p) => p.id === currentPlanId);
 
@@ -29,17 +40,24 @@ function Plans() {
 
   const confirmChange = async () => {
     if (!confirming) return;
-    await changePlan(1, confirming.id); // demo user id
-    setCurrentPlanId(confirming.id);
-    setBanner(`You're now on the ${confirming.name} plan.`);
-    setConfirming(null);
+    setSubmitting(true);
+    try {
+      await changePlan(userId, confirming.id);
+      setCurrentPlanId(confirming.id);
+      setBanner(`Success! You have activated the ${confirming.name} plan.`);
+      setConfirming(null);
+    } catch (err) {
+      setBanner(`Error updating plan: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="page-content">
       <div className="page-heading">
         <h1>View & change plan</h1>
-        <p>Compare tiers and switch whenever your needs change — takes effect on your next billing cycle.</p>
+        <p>Compare tiers and switch whenever your needs change — instant activation with ACID transaction safety.</p>
       </div>
 
       {banner && <div className="form-banner form-banner-success">{banner}</div>}
@@ -47,15 +65,16 @@ function Plans() {
       {confirming && (
         <div className="form-banner form-banner-error plan-confirm-banner">
           <span>
-            {confirming.price > (currentPlan?.price || 0) ? 'Upgrade' : 'Downgrade'} to{' '}
-            <strong>{confirming.name}</strong> for ${confirming.price}/month?
+            {currentPlan
+              ? `${confirming.price > currentPlan.price ? 'Upgrade' : 'Downgrade'} to ${confirming.name} for $${confirming.price}/month?`
+              : `Activate ${confirming.name} plan for $${confirming.price}/month?`}
           </span>
           <div className="plan-confirm-actions">
-            <button className="btn btn-sm btn-secondary" onClick={() => setConfirming(null)}>
+            <button className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => setConfirming(null)}>
               Cancel
             </button>
-            <button className="btn btn-sm btn-primary" onClick={confirmChange}>
-              Confirm
+            <button className="btn btn-sm btn-primary" disabled={submitting} onClick={confirmChange}>
+              {submitting ? 'Activating…' : 'Confirm'}
             </button>
           </div>
         </div>

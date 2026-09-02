@@ -24,10 +24,7 @@ const PAGE_TITLES = {
 
 /**
  * AuthenticatedLayout
- * Shared shell (Sidebar + Navbar) for every page that requires a
- * session. Redirects to /signin if there is no active session, and
- * away from the wrong side of the app if a client tries an admin
- * route or vice versa.
+ * Shared shell (Sidebar + Navbar) for every page that requires a session.
  */
 function AuthenticatedLayout({ session, onLogout, requiredRole }) {
   const location = useLocation();
@@ -53,13 +50,32 @@ function AuthenticatedLayout({ session, onLogout, requiredRole }) {
 }
 
 function App() {
-  // In a full build this would come from a auth context / JWT-free
-  // server session (per the SRS, this project uses simple DB-backed
-  // signup/signin — no JWT/session library).
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem('safex_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
-  const handleAuthenticated = ({ role, name }) => setSession({ role, name });
-  const handleLogout = () => setSession(null);
+  const handleAuthenticated = (userData) => {
+    setSession(userData);
+    try {
+      localStorage.setItem('safex_session', JSON.stringify(userData));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    try {
+      localStorage.removeItem('safex_session');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <BrowserRouter>
@@ -69,9 +85,9 @@ function App() {
         <Route path="/signin" element={<Signin onAuthenticated={handleAuthenticated} />} />
 
         <Route element={<AuthenticatedLayout session={session} onLogout={handleLogout} requiredRole="client" />}>
-          <Route path="/dashboard" element={<ClientDashboard userName={session?.name} />} />
-          <Route path="/plans" element={<Plans />} />
-          <Route path="/billing-history" element={<BillingHistory />} />
+          <Route path="/dashboard" element={<ClientDashboard session={session} userName={session?.name} />} />
+          <Route path="/plans" element={<Plans session={session} />} />
+          <Route path="/billing-history" element={<BillingHistory session={session} />} />
         </Route>
 
         <Route element={<AuthenticatedLayout session={session} onLogout={handleLogout} requiredRole="admin" />}>

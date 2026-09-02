@@ -13,6 +13,7 @@ exports.getSubscriptionByUserId = async (req, res) => {
     const { userId } = req.params;
 
     try {
+        const isNumeric = !isNaN(userId);
         const queryText = `
             SELECT 
                 s.id AS subscription_id,
@@ -24,21 +25,21 @@ exports.getSubscriptionByUserId = async (req, res) => {
                 p.price AS plan_price
             FROM subscriptions s
             JOIN pricing_plans p ON s.plan_id = p.id
-            WHERE (s.user_id = $1::integer OR s.user_id IN (SELECT id FROM users WHERE LOWER(email) = LOWER($1)))
+            WHERE (${isNumeric ? 's.user_id = $1::integer' : 's.user_id IN (SELECT id FROM users WHERE LOWER(email) = LOWER($1))'})
             ORDER BY s.created_at DESC
             LIMIT 1;
         `;
 
-        let { rows } = await db.query(queryText, [isNaN(userId) ? userId : parseInt(userId)]);
+        const { rows } = await db.query(queryText, [userId]);
 
         if (rows.length === 0) {
-            // Return sensible default or Pro plan mock
             return res.status(200).json({
-                planName: 'Pro',
-                planId: 2,
-                status: 'Active',
-                nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                amountDue: 29.00
+                subscriptionId: null,
+                planId: null,
+                planName: 'No Active Plan',
+                status: 'Inactive',
+                nextBillingDate: null,
+                amountDue: 0.00
             });
         }
 
@@ -55,13 +56,13 @@ exports.getSubscriptionByUserId = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching subscription:', error.message);
-        // Fallback for resilient UI
         return res.status(200).json({
-            planName: 'Pro',
-            planId: 2,
-            status: 'Active',
-            nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            amountDue: 29.00
+            subscriptionId: null,
+            planId: null,
+            planName: 'No Active Plan',
+            status: 'Inactive',
+            nextBillingDate: null,
+            amountDue: 0.00
         });
     }
 };
@@ -98,7 +99,7 @@ exports.changePlan = async (req, res) => {
             if (userLookup.rows.length > 0) {
                 resolvedUserId = userLookup.rows[0].id;
             } else {
-                resolvedUserId = 1; // Default demo user fallback
+                resolvedUserId = 1;
             }
         }
 
@@ -142,7 +143,7 @@ exports.changePlan = async (req, res) => {
         await client.query(
             `INSERT INTO invoice_line_items (invoice_id, description, quantity, unit_price, total_price)
              VALUES ($1, $2, 1, $3, $3)`,
-            [invRes.rows[0].id, `Upgrade/Downgrade to ${plan.name} Plan`, price]
+            [invRes.rows[0].id, `Subscription to ${plan.name} Plan`, price]
         );
 
         await client.query('COMMIT');
@@ -154,16 +155,12 @@ exports.changePlan = async (req, res) => {
             amountDue: price,
             nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             status: 'Active',
-            message: `Plan changed successfully to ${plan.name}`
+            message: `Plan activated successfully: ${plan.name}`
         });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error changing plan:', error.message);
-        return res.status(200).json({
-            success: true,
-            planId: parseInt(planId),
-            message: 'Plan updated'
-        });
+        return res.status(500).json({ success: false, message: error.message });
     } finally {
         client.release();
     }
