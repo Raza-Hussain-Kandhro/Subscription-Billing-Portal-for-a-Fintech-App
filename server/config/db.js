@@ -7,8 +7,11 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Determine connection string from environment
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/safex_billing_db';
+// Live Supabase Cloud PostgreSQL Connection String
+const SUPABASE_CLOUD_URL = 'postgresql://postgres.ynxfweijibptgxuskvmt:SafeX%40Billing2026%21@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres';
+
+// Determine connection string from environment or use live Supabase
+const connectionString = process.env.DATABASE_URL || SUPABASE_CLOUD_URL;
 
 // Configure PostgreSQL Pool with automatic SSL support for Supabase cloud
 const poolConfig = {

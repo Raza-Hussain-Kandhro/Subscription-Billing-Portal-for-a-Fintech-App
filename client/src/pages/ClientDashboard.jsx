@@ -16,8 +16,10 @@ function ClientDashboard({ userName = 'there' }) {
   const [subscription, setSubscription] = useState(null);
 
   useEffect(() => {
-    // Replace with: fetch(`/api/subscriptions/${userId}`).then(...)
-    setSubscription(MOCK_CLIENT_SUBSCRIPTION);
+    fetch('/api/subscriptions/1')
+      .then(res => res.json())
+      .then(data => setSubscription(data))
+      .catch(() => setSubscription(MOCK_CLIENT_SUBSCRIPTION));
   }, []);
 
   if (!subscription) {

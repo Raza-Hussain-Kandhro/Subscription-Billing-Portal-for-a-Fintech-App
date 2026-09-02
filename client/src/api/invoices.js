@@ -1,7 +1,7 @@
-// Thin fetch wrapper around server/routes/invoiceRoutes.js.
-// Connects to Express + Supabase PostgreSQL Backend with graceful fallback
+// SafeX Fintech - Invoices API Layer
+// Connects directly to Node.js / Express REST API and Supabase PostgreSQL Database
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api';
+const API_BASE = process.env.REACT_APP_API_BASE || '/api';
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
@@ -11,13 +11,8 @@ async function handleResponse(res) {
   return data;
 }
 
-/** GET /invoices/:userId — a client's billing history (date, amount, status). */
+/** GET /api/invoices/:userId — a client's real billing history from Supabase. */
 export async function getInvoices(userId) {
-  try {
-    const res = await fetch(`${API_BASE}/invoices/${userId || 1}`);
-    return await handleResponse(res);
-  } catch (err) {
-    const { MOCK_INVOICES } = await import('../mockData');
-    return MOCK_INVOICES;
-  }
+  const res = await fetch(`${API_BASE}/invoices/${userId || 1}`);
+  return await handleResponse(res);
 }

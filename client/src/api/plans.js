@@ -1,7 +1,7 @@
-// Thin fetch wrapper around server/routes/planRoutes.js and subscriptionRoutes.js.
-// Connects to Express + Supabase PostgreSQL Backend with graceful fallback
+// SafeX Fintech - Plans & Subscriptions API Layer
+// Connects directly to Node.js / Express REST API and Supabase PostgreSQL Database
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api';
+const API_BASE = process.env.REACT_APP_API_BASE || '/api';
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
@@ -11,65 +11,44 @@ async function handleResponse(res) {
   return data;
 }
 
-/** GET /plans — list all subscription plans (Basic/Pro/Premium). */
+/** GET /api/plans — list all subscription plans from Supabase. */
 export async function getPlans() {
-  try {
-    const res = await fetch(`${API_BASE}/plans`);
-    return await handleResponse(res);
-  } catch (err) {
-    const { MOCK_PLANS } = await import('../mockData');
-    return MOCK_PLANS;
-  }
+  const res = await fetch(`${API_BASE}/plans`);
+  return await handleResponse(res);
 }
 
-/** PUT /subscriptions/:userId — change the client's active plan. */
+/** PUT /api/subscriptions/:userId — change active plan in Supabase. */
 export async function changePlan(userId, planId) {
-  try {
-    const res = await fetch(`${API_BASE}/subscriptions/${userId || 1}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId }),
-    });
-    return await handleResponse(res);
-  } catch (err) {
-    return { planId };
-  }
+  const res = await fetch(`${API_BASE}/subscriptions/${userId || 1}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ planId }),
+  });
+  return await handleResponse(res);
 }
 
-/** POST /plans — admin: add a new plan. */
+/** POST /api/plans — admin: add a new plan into Supabase. */
 export async function createPlan(plan) {
-  try {
-    const res = await fetch(`${API_BASE}/plans`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(plan),
-    });
-    return await handleResponse(res);
-  } catch (err) {
-    return { id: Date.now(), ...plan };
-  }
+  const res = await fetch(`${API_BASE}/plans`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(plan),
+  });
+  return await handleResponse(res);
 }
 
-/** PUT /plans/:id — admin: edit an existing plan. */
+/** PUT /api/plans/:id — admin: edit an existing plan in Supabase. */
 export async function updatePlan(id, plan) {
-  try {
-    const res = await fetch(`${API_BASE}/plans/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(plan),
-    });
-    return await handleResponse(res);
-  } catch (err) {
-    return { id, ...plan };
-  }
+  const res = await fetch(`${API_BASE}/plans/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(plan),
+  });
+  return await handleResponse(res);
 }
 
-/** DELETE /plans/:id — admin: remove a plan. */
+/** DELETE /api/plans/:id — admin: remove a plan from Supabase. */
 export async function deletePlan(id) {
-  try {
-    const res = await fetch(`${API_BASE}/plans/${id}`, { method: 'DELETE' });
-    return await handleResponse(res);
-  } catch (err) {
-    return { id };
-  }
+  const res = await fetch(`${API_BASE}/plans/${id}`, { method: 'DELETE' });
+  return await handleResponse(res);
 }

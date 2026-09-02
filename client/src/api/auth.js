@@ -1,7 +1,7 @@
-// Thin fetch wrapper around server/routes/authRoutes.js.
-// Connects to Express + Supabase PostgreSQL Backend with graceful offline fallback
+// SafeX Fintech - Authentication API Layer
+// Connects directly to Node.js / Express REST API and Supabase PostgreSQL Database
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000/api';
+const API_BASE = process.env.REACT_APP_API_BASE || '/api';
 
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}));
@@ -12,74 +12,41 @@ async function handleResponse(res) {
 }
 
 /**
- * POST /signup — { name, email, password, phone }
- * Server validates fields, hashes the password, inserts into `users`.
+ * POST /api/signup — { name, email, password, phone }
+ * Inserts real client record into Supabase PostgreSQL `users` table.
  */
 export async function signup(form) {
-  try {
-    const res = await fetch(`${API_BASE}/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-    return await handleResponse(res);
-  } catch (err) {
-    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
-      throw err;
-    }
-    // Fallback if backend server is not running
-    if (!form.email || !form.password) {
-      throw new Error('Missing required fields');
-    }
-    return { id: Date.now(), name: form.name, email: form.email };
-  }
+  const res = await fetch(`${API_BASE}/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(form),
+  });
+  return await handleResponse(res);
 }
 
 /**
- * POST /signin — { email, password }
- * Returns the client's name on success; throws on invalid credentials.
+ * POST /api/signin — { email, password }
+ * Authenticates client against Supabase PostgreSQL `users` table.
+ * Rejects invalid credentials.
  */
 export async function signin(email, password) {
-  try {
-    const res = await fetch(`${API_BASE}/signin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    return await handleResponse(res);
-  } catch (err) {
-    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
-      throw err;
-    }
-    // Fallback if backend server is not running
-    if (!email || !password || password.length < 6) {
-      throw new Error('Invalid email or password');
-    }
-    const name = email.split('@')[0].replace(/[._]/g, ' ');
-    return { name: name.replace(/\b\w/g, (c) => c.toUpperCase()) };
-  }
+  const res = await fetch(`${API_BASE}/signin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  return await handleResponse(res);
 }
 
 /**
- * POST /admin/login — { username, password }
- * Checked against the pre-seeded admin record.
+ * POST /api/admin/login — { username, password }
+ * Authenticates admin against Supabase PostgreSQL `admins` table.
  */
 export async function adminLogin(username, password) {
-  try {
-    const res = await fetch(`${API_BASE}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    return await handleResponse(res);
-  } catch (err) {
-    if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
-      throw err;
-    }
-    // Fallback if backend server is not running
-    if (username === 'admin' && password === 'admin123') {
-      return { name: 'Admin' };
-    }
-    throw new Error('Invalid username or password');
-  }
+  const res = await fetch(`${API_BASE}/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  return await handleResponse(res);
 }
