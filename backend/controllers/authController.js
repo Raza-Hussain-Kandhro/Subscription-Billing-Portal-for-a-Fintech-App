@@ -6,6 +6,9 @@
 const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 
+// Standard Email RFC Regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Helper to compare password against hash with fallback for plaintext demo strings
 async function verifyPassword(plain, storedHash) {
     if (!storedHash) return false;
@@ -26,6 +29,12 @@ exports.signup = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+        return res.status(400).json({ success: false, message: 'Invalid email: Please enter a valid email address (e.g. name@domain.com)' });
+    }
+
     if (password.length < 6) {
         return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
     }
@@ -35,10 +44,10 @@ exports.signup = async (req, res) => {
         await client.query('BEGIN');
 
         // Check if user already exists
-        const existing = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
+        const existing = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [cleanEmail]);
         if (existing.rows.length > 0) {
             await client.query('ROLLBACK');
-            return res.status(409).json({ success: false, message: 'An account with this email already exists' });
+            return res.status(409).json({ success: false, message: 'An account with this email already exists. Please sign in.' });
         }
 
         // Hash password
@@ -50,7 +59,7 @@ exports.signup = async (req, res) => {
             `INSERT INTO users (name, email, password_hash, phone, role, status)
              VALUES ($1, $2, $3, $4, 'client', 'Active')
              RETURNING id, name, email, role`,
-            [name.trim(), email.trim().toLowerCase(), passwordHash, phone || null]
+            [name.trim(), cleanEmail, passwordHash, phone ? phone.trim() : null]
         );
         const newUser = userRes.rows[0];
 
@@ -69,7 +78,7 @@ exports.signup = async (req, res) => {
             name: newUser.name,
             email: newUser.email,
             role: newUser.role,
-            message: 'User registered successfully'
+            message: 'Account created successfully. Please sign in.'
         });
     } catch (error) {
         await client.query('ROLLBACK');
@@ -91,27 +100,36 @@ exports.signin = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+        return res.status(400).json({ success: false, message: 'Invalid email format. Please enter a valid email address.' });
+    }
+
     try {
         const { rows } = await db.query(
             `SELECT id, name, email, password_hash, status, role
              FROM users
              WHERE LOWER(email) = LOWER($1)`,
-            [email.trim()]
+            [cleanEmail]
         );
 
+        // 1. Email does NOT exist in database
         if (rows.length === 0) {
-            return res.status(401).json({ success: false, message: 'Invalid email or password' });
+            return res.status(404).json({ success: false, message: 'Invalid email: No account found with this email. Please create an account.' });
         }
 
         const user = rows[0];
 
+        // 2. Account is Deactivated
         if (user.status === 'Inactive') {
             return res.status(403).json({ success: false, message: 'Account is deactivated. Please contact support.' });
         }
 
+        // 3. Password Check
         const isValid = await verifyPassword(password, user.password_hash);
         if (!isValid) {
-            return res.status(401).json({ success: false, message: 'Invalid email or password' });
+            return res.status(401).json({ success: false, message: 'Incorrect password. Please try again.' });
         }
 
         return res.status(200).json({
@@ -138,25 +156,27 @@ exports.adminLogin = async (req, res) => {
         return res.status(400).json({ success: false, message: 'Username and password are required' });
     }
 
+    const cleanUser = username.trim().toLowerCase();
+
     try {
         const { rows } = await db.query(
             `SELECT id, username, password_hash, name
              FROM admins
              WHERE LOWER(username) = LOWER($1)`,
-            [username.trim()]
+            [cleanUser]
         );
 
         if (rows.length === 0) {
-            if (username.trim() === 'admin' && password === 'admin123') {
+            if (cleanUser === 'admin' && password === 'admin123') {
                 return res.status(200).json({ success: true, id: 1, name: 'System Administrator', role: 'admin' });
             }
-            return res.status(401).json({ success: false, message: 'Invalid username or password' });
+            return res.status(404).json({ success: false, message: 'Invalid admin username' });
         }
 
         const admin = rows[0];
         const isValid = await verifyPassword(password, admin.password_hash);
-        if (!isValid && !(username === 'admin' && password === 'admin123')) {
-            return res.status(401).json({ success: false, message: 'Invalid username or password' });
+        if (!isValid && !(cleanUser === 'admin' && password === 'admin123')) {
+            return res.status(401).json({ success: false, message: 'Incorrect admin password' });
         }
 
         return res.status(200).json({
@@ -167,7 +187,7 @@ exports.adminLogin = async (req, res) => {
         });
     } catch (error) {
         console.error('Admin Login Error:', error.message);
-        if (username.trim() === 'admin' && password === 'admin123') {
+        if (cleanUser === 'admin' && password === 'admin123') {
             return res.status(200).json({ success: true, id: 1, name: 'System Administrator', role: 'admin' });
         }
         return res.status(500).json({ success: false, message: error.message });

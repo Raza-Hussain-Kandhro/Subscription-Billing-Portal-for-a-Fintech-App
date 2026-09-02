@@ -5,12 +5,7 @@ import '../styles/Signup.css';
 
 /**
  * Signin
- * SRS 3.1.2 (client) and 3.2.1 (admin login).
- * A single screen with a role toggle: Client hits POST /signin,
- * Admin hits POST /admin/login against the pre-seeded admin record.
- *
- * Props:
- *  - onAuthenticated: fn({ role, name })  -> lifts session up to App
+ * Strict validation and Supabase authentication
  */
 function Signin({ onAuthenticated }) {
   const navigate = useNavigate();
@@ -27,14 +22,20 @@ function Signin({ onAuthenticated }) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
+    setBannerError('');
   };
 
   const validate = () => {
     const next = {};
     if (!form.identifier.trim()) {
       next.identifier = role === 'admin' ? 'Username is required' : 'Email is required';
+    } else if (role === 'client' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.identifier.trim())) {
+      next.identifier = 'Please enter a valid email address (e.g. name@domain.com)';
     }
-    if (!form.password) next.password = 'Password is required';
+
+    if (!form.password) {
+      next.password = 'Password is required';
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -46,13 +47,13 @@ function Signin({ onAuthenticated }) {
 
     setSubmitting(true);
     try {
+      const cleanIdentifier = form.identifier.trim();
       const result =
-        role === 'admin' ? await adminLogin(form.identifier, form.password) : await signin(form.identifier, form.password);
+        role === 'admin' ? await adminLogin(cleanIdentifier, form.password) : await signin(cleanIdentifier, form.password);
 
-      onAuthenticated({ role, name: result.name, id: result.id, email: result.email || form.identifier });
+      onAuthenticated({ role, name: result.name, id: result.id, email: result.email || cleanIdentifier });
       navigate(role === 'admin' ? '/admin' : '/dashboard');
     } catch (err) {
-      // SRS 3.1.2: "Invalid email or password" on failure
       setBannerError(err.message || 'Invalid email or password');
     } finally {
       setSubmitting(false);
@@ -68,7 +69,7 @@ function Signin({ onAuthenticated }) {
         </div>
 
         <h1 className="auth-title">Sign in</h1>
-        <p className="auth-subtitle">Access your billing dashboard.</p>
+        <p className="auth-subtitle">Access your billing workspace.</p>
 
         <div className="auth-role-toggle" role="tablist" aria-label="Sign in as">
           <button
@@ -100,18 +101,18 @@ function Signin({ onAuthenticated }) {
         </div>
 
         {justRegistered && (
-          <div className="form-banner form-banner-success">Account created. Sign in to continue.</div>
+          <div className="form-banner form-banner-success">Account created successfully! Please sign in with your credentials.</div>
         )}
         {bannerError && <div className="form-banner form-banner-error">{bannerError}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="field">
-            <label htmlFor="identifier">{role === 'admin' ? 'Username' : 'Email'}</label>
+            <label htmlFor="identifier">{role === 'admin' ? 'Admin Username' : 'Client Email'}</label>
             <input
               id="identifier"
               name="identifier"
               type={role === 'admin' ? 'text' : 'email'}
-              placeholder={role === 'admin' ? 'admin' : 'jordan@company.com'}
+              placeholder={role === 'admin' ? 'admin' : 'name@company.com'}
               value={form.identifier}
               onChange={handleChange}
               className={errors.identifier ? 'has-error' : ''}
@@ -143,10 +144,6 @@ function Signin({ onAuthenticated }) {
             Don't have an account? <Link to="/signup">Sign up</Link>
           </p>
         )}
-
-        <p className="auth-demo-hint">
-          Demo credentials — Client: any email + password 8+ chars · Admin: admin / admin123
-        </p>
       </div>
     </div>
   );
