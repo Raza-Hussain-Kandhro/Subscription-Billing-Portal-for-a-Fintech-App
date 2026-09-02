@@ -1,0 +1,20 @@
+.invoice-table-wrap {
+  overflow-x: auto;
+}
+
+.invoice-table-empty {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.invoice-table-empty p {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.invoice-table-empty span {
+  font-size: 13.5px;
+  color: var(--color-text-secondary);
+}

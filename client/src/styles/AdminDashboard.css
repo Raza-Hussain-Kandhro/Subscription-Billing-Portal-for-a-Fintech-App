@@ -1,0 +1,114 @@
+.admin-metric-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 1000px) {
+  .admin-metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.client-name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.client-name-cell span:first-child {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.client-name-cell .text-muted {
+  font-size: 12.5px;
+}
+
+.admin-table-actions {
+  text-align: right;
+}
+
+/* ---------- Plan management ---------- */
+
+.admin-plan-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-plan-name {
+  display: block;
+  font-weight: 600;
+  font-size: 14.5px;
+  margin-bottom: 3px;
+}
+
+.admin-plan-features {
+  font-size: 12.5px;
+}
+
+.admin-plan-row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-plan-price {
+  font-weight: 700;
+  color: var(--color-navy);
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+.plan-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+  background: var(--color-bg);
+  padding: 16px;
+  border-radius: var(--radius);
+}
+
+.plan-form .field {
+  margin-bottom: 0;
+}
+
+.plan-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .plan-form {
+    grid-template-columns: 1fr;
+  }
+  .admin-plan-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .admin-plan-row-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
