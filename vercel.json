@@ -19,20 +19,20 @@
       "dest": "server/server.js"
     },
     {
-      "src": "/plans",
-      "dest": "server/server.js"
+      "src": "/static/(.*)",
+      "dest": "/client/static/$1"
     },
     {
-      "src": "/subscriptions/(.*)",
-      "dest": "server/server.js"
+      "src": "/favicon.ico",
+      "dest": "/client/favicon.ico"
     },
     {
-      "src": "/invoices/(.*)",
-      "dest": "server/server.js"
+      "src": "/manifest.json",
+      "dest": "/client/manifest.json"
     },
     {
       "src": "/(.*)",
-      "dest": "/client/$1"
+      "dest": "/client/index.html"
     }
   ]
 }
