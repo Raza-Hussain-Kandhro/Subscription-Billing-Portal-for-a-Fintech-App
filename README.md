@@ -131,6 +131,10 @@ Subscription-Billing-Portal/
 ---
 
 ## 👨‍💻 Author & Contributions
+- **Raza Hussain**
+- BS Computer Science (7th Semester)
+- SafeX Internship — Team 2
+
 - **Ahmed Iqbal**
 - BS Software Engineering (7th Semester)
 - SafeX Internship — Team 2
