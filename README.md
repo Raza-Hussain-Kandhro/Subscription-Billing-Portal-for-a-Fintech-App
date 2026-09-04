@@ -6,8 +6,11 @@
 [![ACID Compliant](https://img.shields.io/badge/Security-ACID%20%26%20PCI%20DSS%20Ready-emerald.svg)]()
 [![Status](https://img.shields.io/badge/Status-Completed-success.svg)]()
 
-> **Project:** Subscription Billing Portal for a Fintech App 
+> **Project:** Subscription Billing Portal for a Fintech App
+>
+> 
 > **Lead Developer (Frontend & Functionality):** Raza Hussain
+> 
 > **Lead Developer (DB & Backend):** Ahmed Iqbal  
 > **Responsibilities:**
 > - 🗄️ **Database Architecture & Data Modeling:** PostgreSQL on Supabase Cloud
