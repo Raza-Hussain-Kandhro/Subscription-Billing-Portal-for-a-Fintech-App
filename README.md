@@ -131,10 +131,14 @@ Subscription-Billing-Portal/
 ---
 
 ## 👨‍💻 Author & Contributions
-- **Raza Hussain**
-- BS Computer Science (7th Semester)
-- SafeX Internship — Team 2
+- **Raza Hussain**-Leader (7th Semester)
+- **Ahmed Iqbal**  (7th Semester)
+- **Abdul Rehman**  (Graduated)
+- **Sajid Ali**  (Graduated)
+- **Muhammad Hassan abbas**  (8th Semester)
+- **Syed Qazi Burhan**  (5th Semester)
+  
+- -**SafeX Internship**—-Group 60
+  
 
-- **Ahmed Iqbal**
-- BS Software Engineering (7th Semester)
-- SafeX Internship — Team 2
+
